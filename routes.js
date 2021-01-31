@@ -24,40 +24,39 @@ const publicController = require('./controllers/frontend/public');
 const recentActionsController = require('./controllers/frontend/recentActions');
 const socialMediaFrontendController = require('./controllers/frontend/socialMedia');
 const supportFrontendController = require('./controllers/frontend/support');
-
 const domainNameAndTLD = process.env.DOMAIN_NAME_AND_TLD;
-
-console.log(`DOMAIN NAME AND TLD: ${domainNameAndTLD}\n`);
 
 /** passport config **/
 const passportConfig = require('./config/passport');
 const authMiddleware = require('./middlewares/shared/authentication');
 
+
+console.log(`DOMAIN NAME AND TLD: ${domainNameAndTLD}\n`);
+
 function fileHostRoutes(app){
   console.log('RUNNING AS FILE HOST \n');
-
   // set res header to upload to another server
   if(process.env.ALLOW_COR == 'true'){
     app.use(function(req, res, next){
-
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With');
       res.setHeader('Access-Control-Allow-Methods', 'PUT, GET, POST, OPTIONS');
       res.setHeader('Cache-Control', 'no-cache');
-
       next();
     });
   }
 
-  /** upload APIS **/
-  // API that the frontend hits for a uesr to upload
+  /** upload API's **/
+  // API that the frontend hits for a user to upload
   app.post('/upload', uploadingController.postFileUpload);
 
   // direct upload for admins that can be used to upload livestream recordings
   app.post('/admin/upload', authMiddleware.adminAuth, uploadingController.adminUpload);
 
-  // edit upload and thumbnails thumbnails
-  // note: don't put this behind auth middleware because it uses a token
+  // edit upload and thumbnails
+  /** 
+   * @description - don't put this behind auth middleware because it uses a token 
+   */
   app.post('/api/upload/:uniqueTag/edit', internalApiController.editUpload);
   app.post('/api/upload/:uniqueTag/thumbnail/delete', internalApiController.deleteUploadThumbnail);
 
@@ -237,13 +236,12 @@ function frontendRoutes(app){
   /** account pages **/
   app.get('/notifications', accountFrontendController.notification);
   app.get('/notifications/:page', accountFrontendController.notification);
+  app.get('/signup', accountFrontendController.getSignup);
   app.get('/login', accountFrontendController.getLogin);
   app.get('/logout', accountFrontendController.logout);
   app.get('/forgot', accountFrontendController.getForgot);
   app.get('/reset/:token', accountFrontendController.getReset);
   app.get('/confirmEmail/:token', accountFrontendController.getConfirm);
-
-  app.get('/signup', accountFrontendController.getSignup);
 
   /** account api endpoints **/
   app.post('/login', accountBackendController.postLogin);
@@ -254,14 +252,12 @@ function frontendRoutes(app){
   /** include passport here because if its a file host, route is already loaded **/
   app.post('/api/channel/thumbnail/delete', passportConfig.isAuthenticated, internalApiController.deleteChannelThumbnail);
   app.post('/api/deleteUserEmail', passportConfig.isAuthenticated, internalApiController.deleteUserEmail);
-
   app.post('/api/upload/:uniqueTag/edit', passportConfig.isAuthenticated, internalApiController.editUpload);
   app.post('/api/upload/:uniqueTag/thumbnail/delete', passportConfig.isAuthenticated, internalApiController.deleteUploadThumbnail);
   app.post('/api/upload/:uniqueTag/captions/delete', passportConfig.isAuthenticated, internalApiController.deleteUploadCaption);
 
   /** API ENDPOINTS **/
   app.post('/api/react/:upload/:user', passportConfig.isAuthenticated, internalApiController.react);
-
   app.post('/api/updateLastWatchedTime', passportConfig.isAuthenticated, internalApiController.updateLastWatchedTime);
   app.post('/api/subscribeToPushNotifications', passportConfig.isAuthenticated, internalApiController.subscribeToPushNotifications);
   app.post('/api/sendUserPushNotifs', passportConfig.isAuthenticated, internalApiController.sendUserPushNotifs);
@@ -296,7 +292,6 @@ function frontendRoutes(app){
   app.get('/account/reactHistory', passportConfig.isAuthenticated, accountFrontendController.getReactHistory);
   app.get('/account/livestreaming', passportConfig.isAuthenticated, accountFrontendController.livestreaming);
   app.get('/account/extra', passportConfig.isAuthenticated, accountFrontendController.getExtraPage);
-
   app.get('/media/subscribed', passportConfig.isAuthenticated, accountFrontendController.subscriptions);
   app.get('/media/subscribed/:page', passportConfig.isAuthenticated, accountFrontendController.subscriptions);
 
@@ -306,6 +301,10 @@ function frontendRoutes(app){
   app.get('/user/:channel/:media/edit', passportConfig.isAuthenticated, accountFrontendController.editUpload);
 
   // ??
+  /**
+  * @deprecated Is OAUTH implemented ??? - 
+  * @todo this route may be deprecated - pending review
+  */
   app.get('/account/unlink/:provider', passportConfig.isAuthenticated, accountFrontendController.getOauthUnlink);
 
   /** ACCOUNT APIS **/
@@ -353,9 +352,8 @@ function frontendRoutes(app){
 
   /** SOCIAL MEDIA ENDPOINTS **/
   app.get('/admin/createSocialPost', authMiddleware.adminAuth, socialMediaFrontendController.getCreateSocialPost);
-  app.get('/admin/oneOffSocialPost', authMiddleware.adminAuth, socialMediaFrontendController.getOneOffSocialPost);
-
   app.post('/admin/createSocialPost', authMiddleware.adminAuth, socialMediaBackendController.postCreateSocialPost);
+  app.get('/admin/oneOffSocialPost', authMiddleware.adminAuth, socialMediaFrontendController.getOneOffSocialPost);
   app.post('/admin/oneOffSocialPost', authMiddleware.adminAuth, socialMediaBackendController.postOneOffSocialPost);
 
   /** ADMIN API ROUTES **/
@@ -366,69 +364,43 @@ function frontendRoutes(app){
   app.post('/admin/changeRatings', authMiddleware.adminAuth, adminBackendController.changeRatings);
   app.post('/admin/getUserAccounts', authMiddleware.adminAuth, adminBackendController.getUserAccounts);
 
+  /**
+   * @todo access usage and sort to appropriate grouping
+   */
   app.post('/save-subscription', passportConfig.isAuthenticated, internalApiController.savePushEndpoint);
 
   // find all ips and accounts associated
   app.post('/admin/deleteAllUsersAndBlockIps', authMiddleware.adminAuth, adminBackendController.deleteAllUsersAndBlockIps);
-
   app.post('/admin/siteVisitors', authMiddleware.adminAuth, adminBackendController.postSiteVisitors);
   app.post('/admin/notifications', authMiddleware.adminAuth, adminBackendController.sendNotification);
 
+
+  /** Debugging function with no controller API?
+  * @todo add route to controller or remove
+  */
   app.get('/debug', async function(req, res){
     return res.render('error/debug', {
       title: 'Debug'
     });
   });
 
+  /**
+   * @todo Validate this path has no future use and remove this comment
+   */
   // req.params
   // app.get('/:media', mediaPlayerController.getMedia)
 
   // "vanity url"
   app.get('/:channel', accountFrontendController.getChannel);
-
   app.get('/:channel/:media', mediaPlayerController.getMedia);
 
   // anything that misses, return a 404
   app.get('*', function(req, res){
-
     res.status(404);
-
     return res.render('error/404', {
       title: 'Not Found'
     });
   });
-
-  /** Oauth/API stuff that isn't being used **/
-  // /**
-  //  * API examples routes.
-  //  */
-  // app.get('/api', internalApiController.getApi);
-  // app.get('/api/stripe', internalApiController.getStripe);
-  // app.post('/api/stripe', internalApiController.postStripe);
-  // app.get('/api/twilio', internalApiController.getTwilio);
-  // app.post('/api/twilio', internalApiController.postTwilio);
-  // app.get('/api/facebook', passportConfig.isAuthenticated, passportConfig.isAuthorized, internalApiController.getFacebook);
-  // app.get('/api/twitter', passportConfig.isAuthenticated, passportConfig.isAuthorized, internalApiController.getTwitter);
-  // app.post('/api/twitter', passportConfig.isAuthenticated, passportConfig.isAuthorized, internalApiController.postTwitter);
-
-  // app.get('/auth/youtube', passport.authenticate('youtube'));
-  // app.get('/auth/youtube/callback', passport.authenticate('youtube', {failureRedirect: '/account'}), (req, res) => {
-  //
-  //   console.log('success');
-  //
-  //   res.redirect('/account');
-  // });
-  //
-  // app.get('/auth/facebook', passport.authenticate('facebook', {scope: ['email', 'public_profile']}));
-  // app.get('/auth/twitter/callback', passport.authenticate('facebook', {failureRedirect: '/login'}), (req, res) => {
-  //   res.redirect(req.session.returnTo || '/');
-  // });
-  //
-  //
-  // app.get('/auth/twitter', passport.authenticate('twitter'));
-  // app.get('/auth/twitter/callback', passport.authenticate('twitter', {failureRedirect: '/login'}), (req, res) => {
-  //   res.redirect(req.session.returnTo || '/');
-  // });
 }
 
 module.exports = {
