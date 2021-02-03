@@ -10,6 +10,8 @@ services:
       - "49161:3000"
     volumes:
       - /app/node_modules
+      - ./.env.settings:/app/.env.settings
+      - ./.env.private:/app/.env.private
       - ./recordings:/app/recordings
       - ./hls:/app/hls
       - ./upload:/app/upload
@@ -20,7 +22,6 @@ services:
     depends_on:
       - redis
       - mongo
-      - nginx
     command: npm start
     networks:
       - nodetube-network
@@ -48,9 +49,12 @@ services:
       - "1935:1935"
     volumes:
       - ./config/nginx.conf:/etc/nginx/nginx.conf.template
+      - ./hls:/app/hls
       - ./recordings:/app/recordings
       - ./upload:/app/upload
       - ./uploads:/app/uploads
+    depends_on:
+      - node
     networks:
       - nodetube-network
 
