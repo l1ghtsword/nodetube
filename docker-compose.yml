@@ -7,9 +7,8 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "49161:3000"
+      - "3000:3000"
     volumes:
-      - /app/node_modules
       - ./.env.settings:/app/.env.settings
       - ./.env.private:/app/.env.private
       - ./recordings:/app/recordings

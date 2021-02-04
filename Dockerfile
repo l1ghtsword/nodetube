@@ -1,6 +1,6 @@
 FROM bougyman/voidlinux as void
 RUN xbps-install -Syu git tar python nodejs-lts-10 base-devel
-COPY app* package* .env.settings.sample .env.private.sample copySettingsAndPrivateFiles.js Procfile routes.js /app/
+COPY app* package* .env.settings.sample .env.private.sample copySettingsAndPrivateFiles.js Procfile routes.js .npmrc LICENSE.MD /app/
 COPY bin /app/bin/
 COPY caching /app/caching/
 COPY config /app/config/
@@ -13,8 +13,6 @@ COPY models /app/models/
 COPY public /app/public/
 COPY scripts /app/scripts/
 COPY views /app/views/
-RUN mkdir /app/hls/
-RUN mkdir /app/recordings/
 
 FROM void as builder
 WORKDIR /app/

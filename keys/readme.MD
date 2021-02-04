@@ -3,5 +3,5 @@
 [![Docker badge](https://img.shields.io/docker/pulls/fiware/orion.svg)](https://hub.docker.com/r/fiware/stream-oriented-kurento/)
 [![Support badge]( https://img.shields.io/badge/support-sof-yellowgreen.svg)](http://stackoverflow.com/questions/tagged/kurento)
 
-This folder contains a dummy self-signed certificate only for demo purposses,
+This folder contains a dummy self-signed certificate only for demo purposes,
 **DON'T USE IT IN PRODUCTION**.
