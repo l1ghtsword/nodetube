@@ -5,9 +5,9 @@ services:
     container_name: nodetube
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: docker/dockerfile-prod
     ports:
-      - "3000:3000"
+      - "49161:3000"
     volumes:
       - ./.env.settings:/app/.env.settings
       - ./.env.private:/app/.env.private

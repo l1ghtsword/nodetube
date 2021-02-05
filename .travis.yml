@@ -1,5 +1,8 @@
 #failing with a weird bug, see:
 #see: https://travis-ci.org/github/mayeaux/nodetube/builds/689876390
+#
+#Bug corrected in https://github.com/mayeaux/nodetube/commit/5e483f96e08d9c8a0b61a760f7aae3d2cb8db4cd
+
 language: node_js
 node_js:
   - "8"
