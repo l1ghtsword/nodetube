@@ -28,7 +28,9 @@ const Promise = require('bluebird');
 const ngrok = require('ngrok');
 const commandExists = require('command-exists');
 const errorHandler = require('errorhandler');
+
 const jsHelpers = require('./lib/helpers/js-helpers');
+const convertType = require('./lib/helpers/convertType');
 
 /** FOR FINDING ERRANT LOGS **/
 if(process.env.SHOW_LOG_LOCATION == 'true' || 1 == 2){
@@ -61,13 +63,22 @@ const httpsPort = process.env.HTTPS_PORT || 3000;
  * @TODO Legacy addin to correct broken code that needs to be updated to include user config
  *       Remove later
  */
-if(process.env.HTTPS_ENABLED == 'true'){
-  process.env.port=httpsPort;
-  var portNumber=httpsPort;
-} else {
-  process.env.port=httpPort;
-  var portNumber=httpPort;
-}
+const portNumber =  convertType.stringToBoolean(process.env.HTTPS_ENABLED) ? (
+  process.env.port=httpsPort,
+  httpsPort 
+):(
+  process.env.port=httpPort,
+  httpPort
+);
+console.log('port: ',process.env.port,' portNumber: ',portNumber)
+
+// if(process.env.HTTPS_ENABLED == 'true'){
+//   process.env.port=httpsPort;
+//   var portNumber=httpsPort;
+// } else {
+//   process.env.port=httpPort;
+//   var portNumber=httpPort;
+// }
 
 const saveAndServeFilesDirectory = settings.saveAndServeFilesDirectory;
 

@@ -1,207 +1,198 @@
+//NODE_MODULE IMPORTS
 const express = require('express');
 const url = require('url');
 const WebSocket = require('ws');
 const fs = require('fs');
 const https = require('https');
 const http = require('http');
-
-const ws = require('ws');
-
-const User = require('../../models/index').User;
-
-const publisher = require('../../config/redis');
-
 const Promise = require('bluebird');
-var redis = require('redis');
+const redis = require('redis');
 
-let client2;
+//PROJECT IMPORTS
+const User = require('../../models/index').User;
+const publisher = require('../../config/redis');
+const convertType = require('../../lib/helpers/convertType');
+
+//Variable declarations
+/**
+ * @TODO this is bas practice, these functions need to be split into separate contexts
+ */
+let livestreamRedisClient;
+let subscriber;
+
+/**
+ * @TODO What is this testing for? if string is not undefined?
+ * this needs re-evaluation
+ */
 if(process.env.REDIS_URL){
+/**/
 
-  console.log(`CONNECTING TO REDIS_URL: ${process.env.REDIS_URL} \n`);
-  client2 = redis.createClient(process.env.REDIS_URL); // creates a new redisClient
+  console.log(`CONNECTING LIVESTREAM CONTROLLER TO EXTERNAL REDIS_URL: ${process.env.REDIS_URL} \n`);
+  livestreamRedisClient = redis.createClient(process.env.REDIS_URL);
 
 } else {
   const redisHost = process.env.REDIS_HOST || '127.0.0.1';
   const redisPort = process.env.REDIS_PORT || 6379;
   const redisPassword =  process.env.REDIS_PASSWORD || '';
+  const options = { host: redisHost, port: redisPort, password: redisPassword };
 
-  const options = {
-    host: redisHost,
-    port: redisPort
-  };
-
-  if(process.env.NODE_ENV == 'production'){
-    options.password = redisPassword;
-  }
-
-  console.log(`CONNECTING TO REDIS, HOST: ${redisHost}, PORT: ${redisPort}\n`);
-
-  client2 = redis.createClient(options); // creates a new redisClient
-
+  console.log(`CONNECTING LIVESTREAM CONTROLLER TO INTERNAL REDIS, HOST: ${redisHost}, PORT: ${redisPort}\n`);
+  livestreamRedisClient = redis.createClient(options);
 }
 
-let subscriber = client2;
-
+subscriber = livestreamRedisClient;
 Promise.promisifyAll(redis.RedisClient.prototype);
 Promise.promisifyAll(redis.Multi.prototype);
 
-// process.on('uncaughtException', (err) => {
-//   console.log(`Uncaught Exception: `, err);
-//   console.log(err.stack);
-// });
-//
-// process.on('unhandledRejection', (err) => {
-//   console.log(`Unhandled Rejection: `, err);
-//   console.log(err.stack);
-// });
 
 /**
  * POST livestream/on-live-done
  * Endpoint that nginx-rtmp hits after the stream is finished
  */
 exports.onLiveDone = (req, res) => {
-
   console.log(req.body);
-
   return res.send('work');
-
-  const user = req.params.user;
-
-  console.log(user);
-
-  res.render('livestream/rtmp', {
-    user,
-    title: 'Livestream ',
-    env: process.env.NODE_ENV
-  });
 };
+  /**
+   * @TODO This code is inaccessible due to return statement
+   * delete this later if it serves no purpose elsewhere and this is a mistake
+   */
+  // const user = req.params.user;
+
+  // console.log(user);
+
+  // res.render('livestream/rtmp', {
+  //   user,
+  //   title: 'Livestream ',
+  //   env: process.env.NODE_ENV
+  // });
+  //};
+
 
 /**
  * POST livestream/on-live-auth
  * Endpoint that nginx-rtmp hits to complete authentication
  */
 exports.onLiveAuth = async(req, res) => {
-
-  console.log(req.body);
-
   const uploadToken = req.body.key;
-
-  console.log(uploadToken);
-
   const user = await User.findOne({ uploadToken });
 
-  // console.log(user);
+  console.log(req.body);
+  console.log(uploadToken);
 
+  // Compare user database upload token to rtmp supplied stream key
+  // SUCCESSFUL
   if(user && user.privs.livestreaming == true){
-    console.log('authentication passed');
-    console.log('found user: ' + user.channelUrl);
-
-    console.log(`Access the livestream at /live/${user.channelUrl}`);
-
+    console.log(
+      'authentication passed','\n',
+      'found user: ' + user.channelUrl,'\n',
+      'Access the livestream at /live/${user.channelUrl}'
+    );
     return res.send('working');
+  // FAILURE
   } else {
-
-    console.log('having to blow up');
-
-    if(user){
-      console.log('user ' + user.channelUrl);
-    }
-
+    console.log('Unable to authenticate user!');
+    if (user) console.log('user ' + user.channelUrl);
     return res.status(500).send('Something broke!');
   }
-
 };
 
-var app;
+const app = express();
 var server;
 let webSockets;
 let connectedUsers;
 let connectedUsersAmount;
 var messagesObject;
 
-// TODO: have to fix this
-var variable = 'true';
-if(variable == 'true')
-{
-  // boot up express server to handle websocket connections
 
-  app = express();
+// boot up express server to handle websocket connections
 
-  // default certs that came with I believe Kurento
-  var options =
-  {
-    key:  fs.readFileSync('keys/server.key'),
-    cert: fs.readFileSync('keys/server.crt')
-  };
+// if(process.env.NODE_ENV == 'production'){
+//   server = https.createServer(options, app).listen(8443, function(){
+//     console.log('Websockets server started over https on port 8443 ');
+//   });
+// } else {
+//   server = http.createServer(options, app).listen(8443, function(){
+//     console.log('Websockets server started over http on port 8443');
+//   });
+// }
 
-  // boot up express server to handle websocket connections
-  if(process.env.NODE_ENV == 'production'){
-    server = https.createServer(options, app).listen(8443, function(){
-      console.log('Websockets server started over https on port 8443 ');
-    });
-  } else {
-    server = http.createServer(options, app).listen(8443, function(){
-      console.log('Websockets server started over http on port 8443');
-    });
-  }
+if(convertType.stringToBoolean(process.env.HTTPS_ENABLED)){
+  const privateKey  = fs.readFileSync(process.env.HTTPS_PRIVATEKEY, 'utf8');
+  const certificate = fs.readFileSync(process.env.HTTPS_CERTIFICATE, 'utf8');
+  const credentials = {key: privateKey, cert: certificate};
+  server = https.createServer(credentials, app).listen(process.env.LIVE_WEBSOC_PORT || 8443);
+  
+  console.log(
+    'Websockets server started over https on port ',
+    (process.env.LIVE_WEBSOC_PORT || 8443)
+  );
+} else {
+  server = http.createServer(app).listen(process.env.LIVE_WEBSOC_PORT || 8443);
 
-  // object which will hold message data and boot up servers
-  webSockets = {};
-
-  /** MESSAGES ENDPOINT **/
-
-  existingMessages = [];
-  connectedUsers = [];
-  connectedUsersAmount = 0;
-
-  // save already sent messages
-  // TODO: need to do this in redis
-  messagesObject = {};
-
-  // code to run when user connects to :8443
-  server.on('upgrade', (request, socket, head) => {
-
-    // get the pathname that the individual is hitting
-    const pathname = url.parse(request.url).pathname;
-
-    // if the user is hitting a messages endpoint ie: (wss://localhost:8080/messages/anthony)
-    var regexp1 = /\/messages\/(.*)/;
-
-    if( pathname.match(regexp1) ){
-
-      // username succeeds :8080/messages/__
-      const username = pathname.match(regexp1)[1];
-
-      // TODO: subscribe here
-      console.log(username + ' username here');
-
-      // instantiate the username for the in memory object if it doesn't exist yet
-      if(!webSockets[username]){
-        webSockets[username] = {};
-      }
-
-      // setup a new websocket server for the messages if one doesn't exist already
-      if(!webSockets[username].messages){
-        webSockets[username].messages = new WebSocket.Server({ noServer: true });
-
-        // when someone connects to this websocket server, run them through callback
-        webSockets[username].messages.on('connection', messageSocketCallback);
-
-      }
-      // code to run when a new connection is made
-      webSockets[username].messages.handleUpgrade(request, socket, head, (ws) => {
-
-        console.log('Loader hit for messages');
-
-        webSockets[username].messages.emit('connection', ws);
-      });
-
-    } else {
-      socket.destroy();
-    }
-  });
-
+  console.log(
+    'Websockets server started over http on port ',
+    (process.env.LIVE_WEBSOC_PORT || 8443)
+  );
 }
+
+
+// object which will hold message data and boot up servers
+webSockets = {};
+
+/** MESSAGES ENDPOINT **/
+
+existingMessages = [];
+connectedUsers = [];
+connectedUsersAmount = 0;
+
+// save already sent messages
+// TODO: need to do this in redis
+messagesObject = {};
+
+// code to run when user connects to :8443
+server.on('upgrade', (request, socket, head) => {
+
+  // get the pathname that the individual is hitting
+  const pathname = url.parse(request.url).pathname;
+
+  // if the user is hitting a messages endpoint ie: (wss://localhost:8080/messages/anthony)
+  var regexp1 = /\/messages\/(.*)/;
+
+  if( pathname.match(regexp1) ){
+
+    // username succeeds :8080/messages/__
+    const username = pathname.match(regexp1)[1];
+
+    // TODO: subscribe here
+    console.log(username + ' username here');
+
+    // instantiate the username for the in memory object if it doesn't exist yet
+    if(!webSockets[username]){
+      webSockets[username] = {};
+    }
+
+    // setup a new websocket server for the messages if one doesn't exist already
+    if(!webSockets[username].messages){
+      webSockets[username].messages = new WebSocket.Server({ noServer: true });
+
+      // when someone connects to this websocket server, run them through callback
+      webSockets[username].messages.on('connection', messageSocketCallback);
+    }
+
+    // code to run when a new connection is made
+    webSockets[username].messages.handleUpgrade(request, socket, head, (ws) => {
+
+      console.log('Loader hit for messages');
+
+      webSockets[username].messages.emit('connection', ws);
+    });
+
+  } else {
+    socket.destroy();
+  }
+});
+
 
 subscriber.on('message', function(channel, message){
 
