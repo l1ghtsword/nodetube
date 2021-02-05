@@ -12,4 +12,4 @@ cache:
 services:
   - mongodb
 script:
-  - npm run eslint
+  - npm run eslint -- --fix

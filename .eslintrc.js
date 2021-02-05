@@ -29,8 +29,8 @@ module.exports = {
             "always"
         ],
         "no-multiple-empty-lines": [
-            "error", 
-            { "max": 1, "maxEOF": 1}
+            "warning", 
+            { "max": 2, "maxEOF": 1}
         ],
         "keyword-spacing": ["error", { "before": false, "after": false , "overrides": {
           "else": { "before": true, "after": true },
