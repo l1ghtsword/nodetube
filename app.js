@@ -2,6 +2,9 @@
  * Module dependencies.
  */
 const express = require('express');
+const fs = require('fs');
+const http = require('http');
+const https = require('https');
 const compression = require('compression');
 const session = require('express-session');
 const bodyParser = require('body-parser');
@@ -50,9 +53,24 @@ const amountOfProcesses = process.env.WEB_CONCURRENCY || numCPUs;
 // set upload server, upload url and save files directory
 const settings = require('./lib/helpers/settings');
 
+// set http and https ports
+const httpPort = process.env.HTTP_PORT || 8080;
+const httpsPort = process.env.HTTPS_PORT || 3000;
+
+/**
+ * @TODO Legacy addin to correct broken code that needs to be updated to include user config
+ *       Remove later
+ */
+if(process.env.HTTPS_ENABLED == 'true') {
+  process.env.port=httpsPort;
+  var portNumber=httpsPort;
+} else {
+  process.env.port=httpPort;
+  var portNumber=httpPort;
+}
+
 const saveAndServeFilesDirectory = settings.saveAndServeFilesDirectory;
 
-const portNumber =  process.env.PORT || 3000;
 
 if(cluster.isMaster){
   console.log('BOOTING APP...\n');
@@ -143,14 +161,7 @@ if(cluster.isMaster){
 
     app.use(favicon(path.join(__dirname, 'public', 'images/favicon.ico')));
 
-    /*
-     * Express configuration.
-     */
-
-    app.set('port', portNumber);
-    app.set('views', path.join(__dirname, 'views'));
-    app.set('view engine', 'pug');
-
+    
     // TODO: put this behind auth
     // status monitor
     app.use(expressStatusMonitor({
@@ -434,11 +445,36 @@ if(cluster.isMaster){
       }
     });
 
+    /*
+     * Express configuration.
+     */
+
+    if(process.env.HTTPS_ENABLED == 'true'){
+      const privateKey  = fs.readFileSync(process.env.HTTPS_PRIVATEKEY, 'utf8');
+      const certificate = fs.readFileSync(process.env.HTTPS_CERTIFICATE, 'utf8');
+      const credentials = {key: privateKey, cert: certificate};
+
+      const httpServer = http.createServer(app);
+      const httpsServer = https.createServer(credentials, app);
+
+      httpServer.listen(httpPort);
+      httpsServer.listen(httpsPort);
+      app.set('port', httpsPort);
+    } else {
+      const httpServer = http.createServer(app);
+
+      httpServer.listen(httpPort);
+      app.set('port', httpPort);
+    }
+
+    app.set('views', path.join(__dirname, 'views'));
+    app.set('view engine', 'pug');
+
     /** start server **/
-    app.listen(app.get('port'), () => {
-      console.log('\n %s App is running at http://localhost:%d in %s mode', chalk.green('✓'), app.get('port'), app.get('env'));
-      console.log('  Press CTRL-C to stop\n');
-    });
+    // app.listen(app.get('port'), () => {
+    //   console.log('\n %s App is running at http://localhost:%d in %s mode', chalk.green('✓'), app.get('port'), app.get('env'));
+    //   console.log('  Press CTRL-C to stop\n');
+    // });
 
     require('dns').lookup(require('os').hostname(), function(err, localIp){
       console.log(`NodeTube can be accessed on your local network at ${localIp}:${portNumber}\n`);
