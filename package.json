@@ -16,7 +16,7 @@
     "test": "mocha --reporter spec",
     "rebuild:sass": "npm rebuild node-sass",
     "postinstall": "node ./copySettingsAndPrivateFiles.js",
-    "eslint": "eslint ./",
+    "eslint": "eslint --fix ./",
     "eslint:fix": "./node_modules/.bin/eslint --fix .",
     "dev": "nodemon -e pug,js app.js",
     "memory": "node --max-old-space-size=4096 app.js",

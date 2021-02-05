@@ -61,7 +61,7 @@ const httpsPort = process.env.HTTPS_PORT || 3000;
  * @TODO Legacy addin to correct broken code that needs to be updated to include user config
  *       Remove later
  */
-if(process.env.HTTPS_ENABLED == 'true') {
+if(process.env.HTTPS_ENABLED == 'true'){
   process.env.port=httpsPort;
   var portNumber=httpsPort;
 } else {

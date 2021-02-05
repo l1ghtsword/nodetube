@@ -2,3 +2,4 @@ lib/
 loading-bar.js
 testing
 public/js/three.js
+docs/jsdoc

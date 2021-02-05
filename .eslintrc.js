@@ -29,7 +29,7 @@ module.exports = {
             "always"
         ],
         "no-multiple-empty-lines": [
-            "warning", 
+            "error", 
             { "max": 2, "maxEOF": 1}
         ],
         "keyword-spacing": ["error", { "before": false, "after": false , "overrides": {
