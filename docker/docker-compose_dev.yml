@@ -1,0 +1,58 @@
+version: '3.1'
+
+services:
+  node:
+    container_name: nodetube-dev
+    build:
+      context: .
+      dockerfile: ./Dockerfile_dev
+    ports:
+      - "49161:3000"
+    volumes:
+      - ../:/app
+    environment:
+      - NODE_ENV=development
+      - REDIS_HOST=redis
+      - MONGODB_URI=mongodb://nodetube-mongo-dev:27017/nodetube
+    depends_on:
+      - redis
+      - mongo
+    command: npm start
+    networks:
+      - nodetube-network
+
+  mongo:
+    container_name: nodetube-mongo-dev
+    image: mongo:4.4
+    volumes:
+      - ../data/db:/data/db
+    ports:
+      - "27011:27017"
+    networks:
+      - nodetube-network
+
+  redis:
+    container_name: nodetube-redis-dev
+    image: redis
+    networks:
+      - nodetube-network
+
+  nginx:
+    container_name: nodetube-nginx-rtmp-dev
+    image: alfg/nginx-rtmp
+    ports:
+      - "1935:1935"
+    volumes:
+      - ../config/nginx-dev.conf:/etc/nginx/nginx.conf.template
+      - ../hls:/app/hls
+      - ../recordings:/app/recordings
+      - ../upload:/app/upload
+      - ../uploads:/app/uploads
+    depends_on:
+      - node
+    networks:
+      - nodetube-network
+
+networks:
+  nodetube-network:
+    driver: bridge

@@ -5,7 +5,7 @@ services:
     container_name: nodetube
     build:
       context: .
-      dockerfile: docker/dockerfile-prod
+      dockerfile: docker/Dockerfile_prod
     ports:
       - "49161:3000"
     volumes:
@@ -16,6 +16,7 @@ services:
       - ./upload:/app/upload
       - ./uploads:/app/uploads
     environment:
+      - NODE_ENV=production
       - REDIS_HOST=redis
       - MONGODB_URI=mongodb://nodetube-mongo:27017/nodetube
     depends_on:
